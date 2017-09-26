@@ -18,7 +18,7 @@ jobs:
 
       - run:
           name: Prepare
-          command: sbt update exit
+          command: sbt -DbintrayLogin=$BINTRAY_USER -DbintrayApiKey=$BINTRAY_PASS update exit
 
       - save_cache:
           key: my-project-{{ checksum "project/build.sbt" }}-{{ checksum "build.sbt" }}
@@ -36,13 +36,13 @@ jobs:
             service mongod status || service mongod start
           name: Test
           command:
-            sbt test exit
+            sbt -DbintrayLogin=$BINTRAY_USER -DbintrayApiKey=$BINTRAY_PASS test exit
 
       - deploy:
             name: Publish
             command: |
               if [ "${CIRCLE_BRANCH}" == "master" ];
-                then sbt package publish exit;
+                then sbt -DbintrayLogin=$BINTRAY_USER -DbintrayApiKey=$BINTRAY_PASS package publish exit;
               fi
 
       - store_test_results:

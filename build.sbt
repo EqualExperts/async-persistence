@@ -14,6 +14,7 @@ headers := EEHeaderSettings()
 organizationHomepage := Some(url("https://www.equalexperts.com"))
 organization := "com.equalexperts"
 
+credentials += BintrayCredentials()
 resolvers := Seq(
   Resolver.bintrayRepo("equalexperts", "open-source-release-candidates"),
   Resolver.bintrayRepo("hmrc", "releases"),
