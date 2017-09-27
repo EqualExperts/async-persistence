@@ -14,17 +14,16 @@
  * limitations under the License.
  */
 
-package com.equalexperts.async.repository
+package com.equalexperts.async.repository.mongo
 
+import com.equalexperts.play.asyncmvc.model.TaskCache
 import org.scalatest.concurrent.PatienceConfiguration.Timeout
 import org.scalatest.concurrent.{Eventually, ScalaFutures}
 import org.scalatest.time.{Millis, Span}
 import org.scalatest.{BeforeAndAfterEach, LoneElement}
 import reactivemongo.bson.BSONObjectID
-import uk.gov.hmrc.mongo._
 import reactivemongo.core.errors.DatabaseException
-import com.equalexperts.play.asyncmvc.model.TaskCache
-import com.equalexperts.play.asyncmvc.repository.TaskCachePersist
+import uk.gov.hmrc.mongo._
 import uk.gov.hmrc.play.test.UnitSpec
 
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -59,9 +58,9 @@ class AsyncMongoRepositorySpec extends UnitSpec with
   "Validating index's " should {
 
     "not be able to insert duplicate data entries" in new Setup {
-      val resp: TaskCachePersist = await(repository.save(task, expireTime))
+      val resp: TaskCache = await(repository.save(task, expireTime))
 
-      def toTaskCacheMongoPersist(t : TaskCachePersist) : TaskCacheMongoPersist = TaskCacheMongoPersist(BSONObjectID(t.id), t.task)
+      def toTaskCacheMongoPersist(t : TaskCache) : TaskCacheMongoPersist = TaskCacheMongoPersist(BSONObjectID.generate, t)
 
       a[DatabaseException] should be thrownBy await(repository.insert(toTaskCacheMongoPersist(resp)))
       a[DatabaseException] should be thrownBy await(repository.insert(toTaskCacheMongoPersist(resp).copy(id = BSONObjectID.generate)))
@@ -74,34 +73,34 @@ class AsyncMongoRepositorySpec extends UnitSpec with
     "create multiple records with different id's" in new Setup {
       val result = await(repository.save(task, expireTime))
 //      result shouldBe an[Saved[_]]
-      result.task shouldBe task
-      result.task.id shouldBe id
+      result shouldBe task
+      result.id shouldBe id
 
-      await(repository.findByTaskId(id)).get.task shouldBe task
+      await(repository.findByTaskId(id)).get shouldBe task
 
       val resultSecond = await(repository.save(task2, expireTime))
-//      resultSecond shouldBe an[Saved[_]]
-      resultSecond.task shouldBe task2
-      resultSecond.task.id shouldBe id2
 
-      await(repository.findByTaskId(id2)).get.task shouldBe task2
+      resultSecond shouldBe task2
+      resultSecond.id shouldBe id2
+
+      await(repository.findByTaskId(id2)).get shouldBe task2
     }
 
     "update an existing record" in new Setup {
       val result = await(repository.save(task, expireTime))
-//      result shouldBe an[Saved[_]]
-      result.task shouldBe task
-      result.task.id shouldBe id
 
-      await(repository.findByTaskId(id)).get.task shouldBe task
+      result shouldBe task
+      result.id shouldBe id
+
+      await(repository.findByTaskId(id)).get shouldBe task
       val result2 = await(repository.save(task.copy(status=4,jsonResponse=taskUpdate.jsonResponse), expireTime))
 
-      await(repository.findByTaskId(id)).get.task shouldBe taskUpdate
+      await(repository.findByTaskId(id)).get shouldBe taskUpdate
     }
 
     "remove the record" in new Setup {
       val result = await(repository.save(task, expireTime))
-      await(repository.findByTaskId(id)).get.task shouldBe task
+      await(repository.findByTaskId(id)).get shouldBe task
 
       await(repository.removeById(id))
 
@@ -110,16 +109,16 @@ class AsyncMongoRepositorySpec extends UnitSpec with
 
     "not remove a record when an invalid Id is supplied" in new Setup {
       val result = await(repository.save(task, expireTime))
-      await(repository.findByTaskId(id)).get.task shouldBe task
+      await(repository.findByTaskId(id)).get shouldBe task
 
       await(repository.removeById("not found"))
 
-      await(repository.findByTaskId(id)).get.task shouldBe task
+      await(repository.findByTaskId(id)).get shouldBe task
     }
 
     "remove the record when the expiration threshold is reached" in new Setup {
       val result = await(repository.save(task, 1))
-      await(repository.findByTaskId(id)).get.task shouldBe task
+      await(repository.findByTaskId(id)).get shouldBe task
 
       eventually(Timeout(Span(60000, Millis))) {
         await(repository.findByTaskId(id)) should equal(None)

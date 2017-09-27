@@ -3,7 +3,7 @@ import sbt._
 object AppDependencies {
 
   val compile = Seq(
-    "com.equalexperts" %% "play-async" % "0.1.0-7-ga3ca4dd" % "provided",
+    "com.equalexperts" %% "play-async" % "0.1.0-9-gd6b4071" % "provided",
     "org.julienrf" %% "play-json-derived-codecs" % "3.3",
     "com.gu" %% "scanamo" % "0.9.5",
 

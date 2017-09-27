@@ -14,24 +14,24 @@
  * limitations under the License.
  */
 
-package com.equalexperts.async.repository
+package com.equalexperts.async.repository.mongo
 
+import com.equalexperts.play.asyncmvc.model.TaskCache
+import com.equalexperts.play.asyncmvc.repository.AsyncCache
 import play.api.libs.json._
 import play.modules.reactivemongo.MongoDbConnection
-import reactivemongo.api.{DB, ReadPreference}
 import reactivemongo.api.indexes.{Index, IndexType}
+import reactivemongo.api.{DB, ReadPreference}
 import reactivemongo.bson._
 import uk.gov.hmrc.mongo.json.ReactiveMongoFormats
 import uk.gov.hmrc.mongo.{AtomicUpdate, BSONBuilderHelpers, DatabaseUpdate, ReactiveRepository}
-import com.equalexperts.play.asyncmvc.model.TaskCache
-import com.equalexperts.play.asyncmvc.repository.{AsyncCache, TaskCachePersist}
 import uk.gov.hmrc.time.DateTimeUtils
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.{ExecutionContext, Future}
 
 case class TaskCacheMongoPersist(id: BSONObjectID, task:TaskCache){
-  def toTaskCachePersist : TaskCachePersist = TaskCachePersist(id.stringify, task)
+  def toTaskCache : TaskCache = task
 }
 
 object TaskCacheMongoPersist {
@@ -92,21 +92,21 @@ class AsyncMongoRepository(implicit mongo: () => DB)
 
   protected def findById(id: String) = BSONDocument("task.id" -> BSONString(id))
 
-  override def findByTaskId(id: String): Future[Option[TaskCachePersist]] = {
+  override def findByTaskId(id: String)(implicit ex :ExecutionContext): Future[Option[TaskCache]] = {
     collection.find(findById(id)).one[TaskCacheMongoPersist](ReadPreference.primaryPreferred).map{
-      case Some(t : TaskCacheMongoPersist) => Some(t.toTaskCachePersist)
+      case Some(t : TaskCacheMongoPersist) => Some(t.toTaskCache)
       case _ => None
     }
   }
 
-  override def removeById(id: String): Future[Unit] = {
+  override def removeById(id: String)(implicit ex :ExecutionContext): Future[Unit] = {
     import reactivemongo.bson.BSONDocument
     collection.remove(BSONDocument("task.id" -> id)).map(_ => {})
   }
 
-  override def save(task: TaskCache, expire: Long): Future[TaskCachePersist] = {
+  override def save(task: TaskCache, expire: Long)(implicit ex :ExecutionContext): Future[TaskCache] = {
     atomicUpsert(findById(task.id), modifierForInsert(task, expire)).map{
-        case update : DatabaseUpdate[TaskCacheMongoPersist] => update.updateType.savedValue.toTaskCachePersist
+        case update : DatabaseUpdate[TaskCacheMongoPersist] => update.updateType.savedValue.toTaskCache
         case _ => throw new RuntimeException("Failed to save task")
     }
   }
