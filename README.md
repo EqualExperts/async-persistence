@@ -1,6 +1,7 @@
 # async-persistence
 
 [ ![Download](https://api.bintray.com/packages/equalexperts/open-source-release-candidates/async-persistence/images/download.svg) ](https://bintray.com/equalexperts/open-source-release-candidates/async-persistence/_latestVersion)
+[![CircleCI](https://circleci.com/gh/EqualExperts/async-persistence.svg?style=svg)](https://circleci.com/gh/EqualExperts/async-persistence)
 
 Library to provide persistence to DynamoDB to support asynchronous functions from [play-async](https://github.com/EqualExperts/play-async)
 
