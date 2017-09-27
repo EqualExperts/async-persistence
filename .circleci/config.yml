@@ -13,15 +13,15 @@ jobs:
       - checkout
       - restore_cache:
           keys:
-            - my-project-{{ checksum "project/build.sbt" }}-{{ checksum "build.sbt" }}
+            - my-project-{{ checksum "build.sbt" }}
             - my-project
 
       - run:
           name: Prepare
-          command: sbt -DbintrayLogin=$BINTRAY_USER -DbintrayApiKey=$BINTRAY_PASS update exit
+          command: sbt update exit
 
       - save_cache:
-          key: my-project-{{ checksum "project/build.sbt" }}-{{ checksum "build.sbt" }}
+          key: my-project-{{ checksum "build.sbt" }}
           paths:
             - target/resolution-cache
             - target/streams
@@ -36,13 +36,13 @@ jobs:
             service mongod status || service mongod start
           name: Test
           command:
-            sbt -DbintrayLogin=$BINTRAY_USER -DbintrayApiKey=$BINTRAY_PASS test exit
+            sbt test exit
 
       - deploy:
             name: Publish
             command: |
               if [ "${CIRCLE_BRANCH}" == "master" ];
-                then sbt -DbintrayLogin=$BINTRAY_USER -DbintrayApiKey=$BINTRAY_PASS package publish exit;
+                then sbt package publish exit;
               fi
 
       - store_test_results:
