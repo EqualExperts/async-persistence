@@ -18,26 +18,34 @@ package com.equalexperts.async.repository
 
 import play.api.libs.json._
 import play.modules.reactivemongo.MongoDbConnection
-import reactivemongo.api.{ReadPreference, DB}
+import reactivemongo.api.{DB, ReadPreference}
 import reactivemongo.api.indexes.{Index, IndexType}
 import reactivemongo.bson._
 import uk.gov.hmrc.mongo.json.ReactiveMongoFormats
 import uk.gov.hmrc.mongo.{AtomicUpdate, BSONBuilderHelpers, DatabaseUpdate, ReactiveRepository}
 import com.equalexperts.play.asyncmvc.model.TaskCache
+import com.equalexperts.play.asyncmvc.repository.{AsyncCache, TaskCachePersist}
 import uk.gov.hmrc.time.DateTimeUtils
+
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.{ExecutionContext, Future}
 
-case class TaskCachePersist(id: BSONObjectID, task:TaskCache)
+case class TaskCacheMongoPersist(id: BSONObjectID, task:TaskCache){
+  def toTaskCachePersist : TaskCachePersist = TaskCachePersist(id.stringify, task)
+}
 
-object TaskCachePersist {
+object TaskCacheMongoPersist {
 
-  val mongoFormats: Format[TaskCachePersist] = ReactiveMongoFormats.mongoEntity(
+  val mongoFormats: Format[TaskCacheMongoPersist] = ReactiveMongoFormats.mongoEntity(
   {
     implicit val oidFormat = ReactiveMongoFormats.objectIdFormats
-    Format(Json.reads[TaskCachePersist], Json.writes[TaskCachePersist])
+    Format(Json.reads[TaskCacheMongoPersist], Json.writes[TaskCacheMongoPersist])
   })
 }
+
+
+
+trait AsyncRepository extends AsyncCache
 
 object AsyncRepository extends MongoDbConnection {
   lazy val mongo = new AsyncMongoRepository
@@ -45,8 +53,8 @@ object AsyncRepository extends MongoDbConnection {
 }
 
 class AsyncMongoRepository(implicit mongo: () => DB)
-  extends ReactiveRepository[TaskCachePersist, BSONObjectID]("asynctaskcache", mongo, TaskCachePersist.mongoFormats, ReactiveMongoFormats.objectIdFormats)
-          with AtomicUpdate[TaskCachePersist]
+  extends ReactiveRepository[TaskCacheMongoPersist, BSONObjectID]("asynctaskcache", mongo, TaskCacheMongoPersist.mongoFormats, ReactiveMongoFormats.objectIdFormats)
+          with AtomicUpdate[TaskCacheMongoPersist]
           with AsyncRepository
           with BSONBuilderHelpers {
 
@@ -66,10 +74,10 @@ class AsyncMongoRepository(implicit mongo: () => DB)
     )
   }
 
-  override def isInsertion(suppliedId: BSONObjectID, returned: TaskCachePersist): Boolean =
+  override def isInsertion(suppliedId: BSONObjectID, returned: TaskCacheMongoPersist): Boolean =
     suppliedId.equals(returned.id)
 
-  private def modifierForInsert(task: TaskCache, expire:Long): BSONDocument = {
+  private def modifierForInsert(task: TaskCache, expire: Long): BSONDocument = {
     val mandatory = BSONDocument(
       "$setOnInsert" -> BSONDocument("task.id" -> task.id),
       "$setOnInsert" -> BSONDocument("task.start" -> task.start),
@@ -78,14 +86,17 @@ class AsyncMongoRepository(implicit mongo: () => DB)
       "$set" -> BSONDocument("task.status" -> task.status)
     )
 
-    val optional = task.jsonResponse.fold(BSONDocument.empty){ response => BSONDocument("$set" -> BSONDocument("task.jsonResponse" -> response)) }
+    val optional = task.jsonResponse.fold(BSONDocument.empty) { response => BSONDocument("$set" -> BSONDocument("task.jsonResponse" -> response)) }
     mandatory ++ optional
   }
 
   protected def findById(id: String) = BSONDocument("task.id" -> BSONString(id))
 
   override def findByTaskId(id: String): Future[Option[TaskCachePersist]] = {
-    collection.find(findById(id)).one[TaskCachePersist](ReadPreference.primaryPreferred)
+    collection.find(findById(id)).one[TaskCacheMongoPersist](ReadPreference.primaryPreferred).map{
+      case Some(t : TaskCacheMongoPersist) => Some(t.toTaskCachePersist)
+      case _ => None
+    }
   }
 
   override def removeById(id: String): Future[Unit] = {
@@ -93,13 +104,12 @@ class AsyncMongoRepository(implicit mongo: () => DB)
     collection.remove(BSONDocument("task.id" -> id)).map(_ => {})
   }
 
-  override def save(task: TaskCache, expire:Long): Future[DatabaseUpdate[TaskCachePersist]] = {
-    atomicUpsert(findById(task.id), modifierForInsert(task, expire))
+  override def save(task: TaskCache, expire: Long): Future[TaskCachePersist] = {
+    atomicUpsert(findById(task.id), modifierForInsert(task, expire)).map{
+        case update : DatabaseUpdate[TaskCacheMongoPersist] => update.updateType.savedValue.toTaskCachePersist
+        case _ => throw new RuntimeException("Failed to save task")
+    }
   }
+
 }
 
-trait AsyncRepository {
-  def save(expectation: TaskCache, expire:Long): Future[DatabaseUpdate[TaskCachePersist]]
-  def findByTaskId(id: String): Future[Option[TaskCachePersist]]
-  def removeById(id: String): Future[Unit]
-}

@@ -24,7 +24,9 @@ import reactivemongo.bson.BSONObjectID
 import uk.gov.hmrc.mongo._
 import reactivemongo.core.errors.DatabaseException
 import com.equalexperts.play.asyncmvc.model.TaskCache
+import com.equalexperts.play.asyncmvc.repository.TaskCachePersist
 import uk.gov.hmrc.play.test.UnitSpec
+
 import scala.concurrent.ExecutionContext.Implicits.global
 
 
@@ -57,11 +59,13 @@ class AsyncMongoRepositorySpec extends UnitSpec with
   "Validating index's " should {
 
     "not be able to insert duplicate data entries" in new Setup {
-      val resp: DatabaseUpdate[TaskCachePersist] = await(repository.save(task, expireTime))
+      val resp: TaskCachePersist = await(repository.save(task, expireTime))
 
-      a[DatabaseException] should be thrownBy await(repository.insert(resp.updateType.savedValue))
-      a[DatabaseException] should be thrownBy await(repository.insert(resp.updateType.savedValue.copy(id = BSONObjectID.generate)))
-      a[DatabaseException] should be thrownBy await(repository.insert(resp.updateType.savedValue.copy(id = BSONObjectID.generate)))
+      def toTaskCacheMongoPersist(t : TaskCachePersist) : TaskCacheMongoPersist = TaskCacheMongoPersist(BSONObjectID(t.id), t.task)
+
+      a[DatabaseException] should be thrownBy await(repository.insert(toTaskCacheMongoPersist(resp)))
+      a[DatabaseException] should be thrownBy await(repository.insert(toTaskCacheMongoPersist(resp).copy(id = BSONObjectID.generate)))
+      a[DatabaseException] should be thrownBy await(repository.insert(toTaskCacheMongoPersist(resp).copy(id = BSONObjectID.generate)))
     }
   }
 
@@ -69,25 +73,25 @@ class AsyncMongoRepositorySpec extends UnitSpec with
 
     "create multiple records with different id's" in new Setup {
       val result = await(repository.save(task, expireTime))
-      result.updateType shouldBe an[Saved[_]]
-      result.updateType.savedValue.task shouldBe task
-      result.updateType.savedValue.task.id shouldBe id
+//      result shouldBe an[Saved[_]]
+      result.task shouldBe task
+      result.task.id shouldBe id
 
       await(repository.findByTaskId(id)).get.task shouldBe task
 
       val resultSecond = await(repository.save(task2, expireTime))
-      resultSecond.updateType shouldBe an[Saved[_]]
-      resultSecond.updateType.savedValue.task shouldBe task2
-      resultSecond.updateType.savedValue.task.id shouldBe id2
+//      resultSecond shouldBe an[Saved[_]]
+      resultSecond.task shouldBe task2
+      resultSecond.task.id shouldBe id2
 
       await(repository.findByTaskId(id2)).get.task shouldBe task2
     }
 
     "update an existing record" in new Setup {
       val result = await(repository.save(task, expireTime))
-      result.updateType shouldBe an[Saved[_]]
-      result.updateType.savedValue.task shouldBe task
-      result.updateType.savedValue.task.id shouldBe id
+//      result shouldBe an[Saved[_]]
+      result.task shouldBe task
+      result.task.id shouldBe id
 
       await(repository.findByTaskId(id)).get.task shouldBe task
       val result2 = await(repository.save(task.copy(status=4,jsonResponse=taskUpdate.jsonResponse), expireTime))
