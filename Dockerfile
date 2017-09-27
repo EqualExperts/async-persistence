@@ -1,20 +1,20 @@
-FROM hseeberger/scala-sbt
+FROM hseeberger/scala-sbt:8u141-jdk_2.12.3_0.13.16
 
-WORKDIR /microservice-async
+WORKDIR /async-persistence
 
-COPY ./.git /microservice-async/.git/
+COPY ./.git /async-persistence/.git/
 
-COPY ./build.sbt /microservice-async
+COPY ./build.sbt /async-persistence
 
-COPY ./bintray.sbt /microservice-async
+COPY ./bintray.sbt /async-persistence
 
-COPY ./LICENSE /microservice-async
+COPY ./LICENSE /async-persistence
 
-COPY ./project/*.sbt /microservice-async/project/
+COPY ./project/*.sbt /async-persistence/project/
 
-COPY ./project/*.scala /microservice-async/project/
+COPY ./project/*.scala /async-persistence/project/
 
-COPY ./src /microservice-async/src/
+COPY ./src /async-persistence/src/
 
 RUN sbt test
 

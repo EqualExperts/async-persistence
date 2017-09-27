@@ -2,10 +2,8 @@ import sbt._
 
 object AppDependencies {
 
-  import play.core.PlayVersion
-
   val compile = Seq(
-    "com.equalexperts" %% "play-async" % "0.1.0-2-ge5bcb84",
+    "com.equalexperts" %% "play-async" % "0.1.0-2-ge5bcb84" % "provided",
     "uk.gov.hmrc" %% "play-reactivemongo" % "5.2.0"
   )
 
