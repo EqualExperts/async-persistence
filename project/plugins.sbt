@@ -11,3 +11,6 @@ addSbtPlugin("uk.gov.hmrc" % "sbt-git-versioning" % "0.9.0")
 addSbtPlugin("com.typesafe.play" % "sbt-plugin" % "2.5.16")
 
 addSbtPlugin("org.foundweekends" % "sbt-bintray" % "0.5.1")
+
+// Local DynamoDB for tests
+addSbtPlugin("com.localytics" % "sbt-dynamodb" % "1.5.5")

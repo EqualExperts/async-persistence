@@ -19,3 +19,5 @@ resolvers := Seq(
   Resolver.bintrayRepo("hmrc", "releases"),
   Resolver.typesafeRepo("releases")
 )
+
+LocalDynamoDb(Test)
