@@ -31,8 +31,6 @@ jobs:
             - ~/.m2
 
       - run:
-          pre:
-            service mongod status || service mongod start
           name: Test
           command:
             sbt test exit
