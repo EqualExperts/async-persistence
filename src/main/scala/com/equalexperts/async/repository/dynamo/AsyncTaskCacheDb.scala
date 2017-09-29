@@ -23,10 +23,13 @@ import com.gu.scanamo.Table
 
 import scala.concurrent.ExecutionContext
 
+sealed case class TaskCachePersist(taskCache: TaskCache, expiry : Long, id : String)
 
-trait AsyncTaskCacheDb extends AbstractDynamoOps[String, TaskCache] with AsyncCache {
+object TaskCachePersist {
+  def apply(taskCache: TaskCache, expiry : Long) : TaskCachePersist = TaskCachePersist(taskCache, expiry, id = taskCache.id)
+}
 
-  import com.gu.scanamo.syntax._
+trait AsyncTaskCacheDb extends AbstractDynamoOps[String, TaskCachePersist] with AsyncCache {
 
   override lazy val table: Table[TaskCache] = {
     log.info(s"AsyncTaskCacheDb table name set to $tableName")
@@ -35,20 +38,21 @@ trait AsyncTaskCacheDb extends AbstractDynamoOps[String, TaskCache] with AsyncCa
 
   protected def generate : String = BSONObjectID.generate().stringify
 
-  override def save(expectation: TaskCache, expire: Long)(implicit ex :ExecutionContext) = {
-    createOrUpdate(expectation)
+  override def save(expectation: TaskCache, expire: Long)(implicit ex :ExecutionContext) : TaskCache = {
+    createOrUpdate(TaskCachePersist(expectation, expire))
     ???
   }
 
-  override def findByTaskId(id: String)(implicit ex :ExecutionContext) = {
+  override def findByTaskId(id: String)(implicit ex :ExecutionContext) : TaskCache = {
     find(id)()
     ???
   }
 
-  override def removeById(id: String)(implicit ex :ExecutionContext) = {
+  override def removeById(id: String)(implicit ex :ExecutionContext) : TaskCache = {
     delete(id)()
     ???
   }
+
 }
 
-class AsyncTaskCacheDbRepository(val client: AmazonDynamoDBAsync, val tableName: String = "asyncTaskCache") extends AsyncTaskCacheDb
+class AsyncTaskCacheDbRepository(val client: AmazonDynamoDBAsync, val tableName: String = "asyncTaskCache")(implicit ex :ExecutionContext) extends AsyncTaskCacheDb
