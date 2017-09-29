@@ -1,10 +1,12 @@
 {
 	"TableName" : "asyncTaskCache",
         "KeySchema": [
-            { "AttributeName": "id", "KeyType": "HASH"}
+            { "AttributeName": "id", "KeyType": "HASH"},
+            { "AttributeName": "expiry", "KeyType": "RANGE"}
         ],
         "AttributeDefinitions": [
-            { "AttributeName": "id", "AttributeType": "S" }
+            { "AttributeName": "id", "AttributeType": "S" },
+            { "AttributeName": "expiry", "AttributeType": "N" }
         ],
   "ProvisionedThroughput": {
     "ReadCapacityUnits": 5,

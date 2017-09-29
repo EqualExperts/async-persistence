@@ -1,4 +1,4 @@
 {
-    "AttributeName": "expiry",
-    "Enabled": true
+  "Enabled": true,
+  "AttributeName": "expiry"
 }
