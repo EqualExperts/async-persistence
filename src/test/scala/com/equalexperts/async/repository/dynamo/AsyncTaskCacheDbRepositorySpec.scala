@@ -18,7 +18,7 @@ package com.equalexperts.async.repository.dynamo
 
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBAsync
 import com.equalexperts.play.asyncmvc.model.{StatusCodes, TaskCache}
-import org.joda.time.DateTime
+import org.joda.time.{DateTime, DateTimeZone}
 import support.{DynamoDBSupport, LocalDynamoDB}
 import uk.gov.hmrc.play.test.UnitSpec
 import uk.gov.hmrc.time.DateTimeUtils
@@ -28,7 +28,9 @@ class AsyncTaskCacheDbRepositorySpec extends UnitSpec with DynamoDBSupport {
   import com.amazonaws.services.dynamodbv2.model.ScalarAttributeType._
   import scala.concurrent.ExecutionContext.Implicits.global
 
-  def asyncTaskCacheDbRepository(tableName : String)(implicit client : AmazonDynamoDBAsync) = new AsyncTaskCacheDbRepository(client, tableName)
+  def asyncTaskCacheDbRepository(tableName : String, overrridenNow : DateTime = DateTime.now.withZone(DateTimeZone.UTC))(implicit client : AmazonDynamoDBAsync) = new AsyncTaskCacheDbRepository(client, tableName) with ExpiryTime {
+    override def now = overrridenNow
+  }
 
   def tableName(testSuffix : String = "Spec") = s"asyncTaskCache-$testSuffix"
 
@@ -38,7 +40,7 @@ class AsyncTaskCacheDbRepositorySpec extends UnitSpec with DynamoDBSupport {
     import LocalDynamoDB.localAsyncClient
     import support.DynamoIntegration.withDatabase
 
-    "be create as an item" in {
+    "create an item" in {
 
       val tablename = tableName("create")
 
@@ -54,6 +56,34 @@ class AsyncTaskCacheDbRepositorySpec extends UnitSpec with DynamoDBSupport {
         }
       }
     }
+
+    "update an item" in {
+
+      val tablename = tableName("update")
+
+      withDatabase(tablename, attributeDef) {
+        tablename => client =>{
+
+          val now = DateTime.now.withZone(DateTimeZone.UTC)
+
+          val repo = asyncTaskCacheDbRepository(tablename, now)
+          val taskCache = TaskCache(BSONObjectID.generate().stringify, StatusCodes.Running, Some("""{"valueA":1,"valueB":2}"""), 1233L, 1244L)
+          await(repo.createOrUpdate(TaskCachePersist(taskCache, 500L))).right.get.taskCache shouldBe taskCache
+
+          val existing = await(repo.find(taskCache.id)()).right.get
+          existing should not be None
+          existing.get.expiry shouldBe 500L
+
+          val update = taskCache.copy(status = StatusCodes.Complete)
+          await(repo.save(update, 1000L)) shouldBe update
+
+          val updated = await(repo.find(taskCache.id)()).right.get.get
+          updated.taskCache shouldBe update
+          updated.expiry shouldBe now.getMillis + 1000L
+        }
+      }
+    }
+
 
     "find by task id" in {
 

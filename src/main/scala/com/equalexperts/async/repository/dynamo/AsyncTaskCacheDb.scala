@@ -32,11 +32,13 @@ object TaskCachePersist {
   def apply(taskCache: TaskCache, expiry : Long) : TaskCachePersist = TaskCachePersist(taskCache, expiry, id = taskCache.id)
 }
 
-trait AsyncTaskCacheDb extends AbstractDynamoOps[String, TaskCachePersist] with AsyncCache {
+trait ExpiryTime {
+  def now = DateTime.now.withZone(DateTimeZone.UTC)
+}
+
+trait AsyncTaskCacheDb extends AbstractDynamoOps[String, TaskCachePersist] with AsyncCache with ExpiryTime {
 
   import com.gu.scanamo.syntax._
-
-  private def now = DateTime.now.withZone(DateTimeZone.UTC)
 
   override lazy val table: Table[TaskCachePersist] = {
     log.info(s"AsyncTaskCacheDb table name set to $tableName")
