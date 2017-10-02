@@ -48,9 +48,9 @@ class AsyncTaskCacheDbRepositorySpec extends UnitSpec with DynamoDBSupport {
           val repo = asyncTaskCacheDbRepository(tablename)
           val taskCache = TaskCache(BSONObjectID.generate().stringify, StatusCodes.Running, None, 1233L, 1244L)
 
-//          await(repo.createOrUpdate(taskCache)).right.get shouldBe taskCache
-//
-//          await(repo.find(taskCache.id)()).right.get.get shouldBe taskCache
+          await(repo.save(taskCache, 500L)) shouldBe taskCache
+
+          await(repo.find(taskCache.id)()).right.get.get.taskCache shouldBe taskCache
         }
       }
     }

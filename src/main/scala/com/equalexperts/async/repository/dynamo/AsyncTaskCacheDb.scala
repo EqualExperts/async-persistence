@@ -17,10 +17,11 @@
 package com.equalexperts.async.repository.dynamo
 
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBAsync
-import com.amazonaws.services.dynamodbv2.model.PutItemResult
 import com.equalexperts.play.asyncmvc.model.TaskCache
 import com.equalexperts.play.asyncmvc.repository.AsyncCache
 import com.gu.scanamo.Table
+import com.gu.scanamo.error.DynamoReadError
+import com.gu.scanamo.update.UpdateExpression
 import org.joda.time.{DateTime, DateTimeZone}
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -33,6 +34,8 @@ object TaskCachePersist {
 
 trait AsyncTaskCacheDb extends AbstractDynamoOps[String, TaskCachePersist] with AsyncCache {
 
+  import com.gu.scanamo.syntax._
+
   private def now = DateTime.now.withZone(DateTimeZone.UTC)
 
   override lazy val table: Table[TaskCachePersist] = {
@@ -44,9 +47,12 @@ trait AsyncTaskCacheDb extends AbstractDynamoOps[String, TaskCachePersist] with 
 
   override def save(expectation: TaskCache, expire: Long)(implicit ex :ExecutionContext) : Future[TaskCache] = {
     val expiresIn = now.getMillis + expire
-    createOrUpdate(TaskCachePersist(expectation, expiresIn)).map{
+    val expression = UpdateExpression.set('taskCache -> expectation) and UpdateExpression.set('expiry -> expiresIn)
+
+    val update = table.update('id -> expectation.id, expression)
+    asyncExec(update).map{
       case Right(created) => created.taskCache
-      case Left(_) => throw new RuntimeException(s"Failed to update task : ${expectation.id}")
+      case Left(dd) => throw new RuntimeException(s"Failed to update task : ${expectation.id}, reason : ${DynamoReadError.describe(dd)}")
     }
   }
 
