@@ -108,7 +108,7 @@ abstract class AbstractDynamoOps[ID, Serialized] extends DynamoOps[ID, Serialize
 
   def asyncExec[A](scanamoOps: ScanamoOps[A])(implicit ec: ExecutionContext) : Future[A] = ScanamoAsync.exec(client)(scanamoOps)
 
-  private def captureAndFail[R](msg: String): PartialFunction[Throwable, Either[RepositoryError, R]] = {
+  protected def captureAndFail[R](msg: String): PartialFunction[Throwable, Either[RepositoryError, R]] = {
     case t: Throwable =>
       log.error(msg, t)
       Left[RepositoryError, R](ConnectionError)

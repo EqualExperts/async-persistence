@@ -17,9 +17,11 @@
 package com.equalexperts.async.repository.dynamo
 
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBAsync
+import com.amazonaws.services.dynamodbv2.model.PutItemResult
 import com.equalexperts.play.asyncmvc.model.TaskCache
 import com.equalexperts.play.asyncmvc.repository.AsyncCache
 import com.gu.scanamo.Table
+import org.joda.time.{DateTime, DateTimeZone}
 
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -31,6 +33,8 @@ object TaskCachePersist {
 
 trait AsyncTaskCacheDb extends AbstractDynamoOps[String, TaskCachePersist] with AsyncCache {
 
+  private def now = DateTime.now.withZone(DateTimeZone.UTC)
+
   override lazy val table: Table[TaskCachePersist] = {
     log.info(s"AsyncTaskCacheDb table name set to $tableName")
     Table[TaskCachePersist](tableName)
@@ -39,8 +43,11 @@ trait AsyncTaskCacheDb extends AbstractDynamoOps[String, TaskCachePersist] with 
   protected def generate : String = BSONObjectID.generate().stringify
 
   override def save(expectation: TaskCache, expire: Long)(implicit ex :ExecutionContext) : Future[TaskCache] = {
-    createOrUpdate(TaskCachePersist(expectation, expire))
-    ???
+    val expiresIn = now.getMillis + expire
+    createOrUpdate(TaskCachePersist(expectation, expiresIn)).map{
+      case Right(created) => created.taskCache
+      case Left(_) => throw new RuntimeException(s"Failed to update task : ${expectation.id}")
+    }
   }
 
   override def findByTaskId(id: String)(implicit ex :ExecutionContext) : Future[Option[TaskCache]] = {
