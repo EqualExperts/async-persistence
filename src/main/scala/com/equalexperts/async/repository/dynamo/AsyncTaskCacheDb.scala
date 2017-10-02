@@ -21,7 +21,7 @@ import com.equalexperts.play.asyncmvc.model.TaskCache
 import com.equalexperts.play.asyncmvc.repository.AsyncCache
 import com.gu.scanamo.Table
 
-import scala.concurrent.ExecutionContext
+import scala.concurrent.{ExecutionContext, Future}
 
 sealed case class TaskCachePersist(taskCache: TaskCache, expiry : Long, id : String)
 
@@ -31,26 +31,31 @@ object TaskCachePersist {
 
 trait AsyncTaskCacheDb extends AbstractDynamoOps[String, TaskCachePersist] with AsyncCache {
 
-  override lazy val table: Table[TaskCache] = {
+  override lazy val table: Table[TaskCachePersist] = {
     log.info(s"AsyncTaskCacheDb table name set to $tableName")
-    Table[TaskCache](tableName)
+    Table[TaskCachePersist](tableName)
   }
 
   protected def generate : String = BSONObjectID.generate().stringify
 
-  override def save(expectation: TaskCache, expire: Long)(implicit ex :ExecutionContext) : TaskCache = {
+  override def save(expectation: TaskCache, expire: Long)(implicit ex :ExecutionContext) : Future[TaskCache] = {
     createOrUpdate(TaskCachePersist(expectation, expire))
     ???
   }
 
-  override def findByTaskId(id: String)(implicit ex :ExecutionContext) : TaskCache = {
-    find(id)()
-    ???
+  override def findByTaskId(id: String)(implicit ex :ExecutionContext) : Future[Option[TaskCache]] = {
+    find(id)().map{
+      case Right(Some(found)) => Some(found.taskCache)
+      case Right(None) => None
+      case Left(_) => throw new RuntimeException(s"Failed to find cached task for id : $id")
+    }
   }
 
-  override def removeById(id: String)(implicit ex :ExecutionContext) : TaskCache = {
-    delete(id)()
-    ???
+  override def removeById(id: String)(implicit ex :ExecutionContext) : Future[Unit] = {
+    delete(id)().map {
+      case Right(_) => Unit
+      case Left(error : RepositoryError) => throw new RuntimeException(s"Failed to delete item with id : $id")
+    }
   }
 
 }

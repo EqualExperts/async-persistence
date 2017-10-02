@@ -22,7 +22,7 @@ import com.amazonaws.client.builder.AwsClientBuilder.EndpointConfiguration
 import com.amazonaws.regions.Regions
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBAsync
 
-import scala.concurrent.ExecutionContext
+import scala.concurrent.{ExecutionContext, Future}
 
 object DynamoIntegration {
   import com.amazonaws.services.dynamodbv2.model.ScalarAttributeType
@@ -119,5 +119,22 @@ object LocalDynamoDB {
 
   private def attributeDefinitions(attributes: Seq[(Symbol, ScalarAttributeType)]) = {
     attributes.map { case (symbol, attributeType) => new AttributeDefinition(symbol.name, attributeType) }.asJava
+  }
+
+
+  def ttl(tableName : String)(implicit client :AmazonDynamoDBAsync, ex :ExecutionContext) : Future[Unit] = {
+    import com.amazonaws.services.dynamodbv2.model.TimeToLiveSpecification
+    import com.amazonaws.services.dynamodbv2.model.UpdateTimeToLiveRequest
+
+    Future{
+      //table created now enabling TTL
+      val req = new UpdateTimeToLiveRequest
+      req.setTableName(tableName)
+      val ttlSpec = new TimeToLiveSpecification
+      ttlSpec.setAttributeName("start")
+      ttlSpec.setEnabled(true)
+      req.withTimeToLiveSpecification(ttlSpec)
+      client.updateTimeToLive(req)
+    }
   }
 }
