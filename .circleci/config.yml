@@ -4,7 +4,7 @@ jobs:
     executorType: docker
     working_directory: ~/async-persistence
     docker:
-      - image: codestar/circleci-scala-sbt-git:scala-2.12.2-sbt-0.13.15
+      - image: hseeberger/scala-sbt:8u141-jdk_2.12.3_0.13.16
     environment:
         SBT_VERSION: 0.13.16
         SCALA_VERSION: 2.11.11
