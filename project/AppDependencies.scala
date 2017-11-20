@@ -6,7 +6,7 @@ object AppDependencies {
     "com.equalexperts" %% "play-async" % "0.1.0-9-gd6b4071" % "provided",
     "org.julienrf" %% "play-json-derived-codecs" % "3.3",
     "com.gu" %% "scanamo" % "0.9.5",
-    "ch.qos.logback" % "logback-classic" % "1.2.3"
+    "ch.qos.logback" % "logback-classic" % "1.1.7"
   )
 
   trait TestDependencies {
